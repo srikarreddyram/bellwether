@@ -1,4 +1,16 @@
-ECONEST
+> **HISTORICAL — superseded by [`prd.md`](prd.md).**
+>
+> This is the v2 specification, retained for provenance. It describes a
+> Jenkins-driven system with a `dashboard.html` static page and an in-memory
+> audit log. None of that exists any more: Jenkins is gone, the dashboard is a
+> React application, and history is persisted in SQLite. Several requirements
+> here were never met by the implementation they describe — most notably the
+> risk engine, which never read live telemetry because the proxy was never
+> started. Read it as a record of intent, not as documentation.
+
+---
+
+BELLWETHER
 ADAPTIVE CANARY PLATFORM
 
 Product Requirements Document  &  Architecture Specification
@@ -7,12 +19,12 @@ Product Requirements Document  &  Architecture Specification
 Version	2.0 — Production Architecture
 Status	Ready for Development Handoff
 Owner	Tejsrikar Reddy
-Repo	github.com/srikarreddyram/econest-canary-platform
+Repo	github.com/srikarreddyram/bellwether-canary-platform
 Platform	Antigravity
 Date	April 2026
  
 1. Executive Summary
-The Econest Adaptive Canary Platform is a cloud-native, language-agnostic continuous deployment system that accepts any GitHub repository URL and orchestrates a progressive, risk-gated traffic rollout — without requiring any modification to the target repository.
+The Bellwether Adaptive Canary Platform is a cloud-native, language-agnostic continuous deployment system that accepts any GitHub repository URL and orchestrates a progressive, risk-gated traffic rollout — without requiring any modification to the target repository.
 
 The platform acts as a deployment harness that wraps external repositories. It:
 •	Clones the target repository twice to create isolated stable and canary instances
@@ -78,7 +90,7 @@ v3.1	Smart Governance	ML-based anomaly detection, Slack/email alerts, approval g
 ID	Requirement	Priority	Source
 FR-01	System SHALL accept any public GitHub HTTPS URL as the REPO_URL pipeline parameter	MUST	Goal
 FR-02	System SHALL clone with --depth 1 to minimise clone time	MUST	Performance
-FR-03	System SHALL create two independent clone directories: /tmp/econest_stable_app and /tmp/econest_canary_app	MUST	Architecture
+FR-03	System SHALL create two independent clone directories: /tmp/bellwether_stable_app and /tmp/bellwether_canary_app	MUST	Architecture
 FR-04	System SHALL fail fast with a clear error if the repo is not clonable	MUST	QA
 FR-05	System SHOULD support private repos via Orchestrator credential store HTTPS credentials	SHOULD	Roadmap
 
@@ -95,13 +107,13 @@ FR-16	launch_app.sh SHALL wait up to 15 seconds for the app to respond before re
 4.3  Traffic Proxy
 ID	Requirement	Priority	Source
 FR-20	traffic_proxy.py SHALL run on port 9000 as the single public-facing entry point	MUST	Architecture
-FR-21	Proxy SHALL read canary weight (0-100) from /tmp/econest_traffic_weight on every request	MUST	Architecture
+FR-21	Proxy SHALL read canary weight (0-100) from /tmp/bellwether_traffic_weight on every request	MUST	Architecture
 FR-22	Proxy SHALL support GET, POST, PUT, DELETE, PATCH, and HEAD methods	MUST	Compatibility
 FR-23	Proxy SHALL forward all request headers (excluding host and connection) and the full body	MUST	Compatibility
-FR-24	Proxy SHALL add X-Econest-Target and X-Econest-Latency response headers	SHOULD	Observability
+FR-24	Proxy SHALL add X-Bellwether-Target and X-Bellwether-Latency response headers	SHOULD	Observability
 FR-25	Proxy SHALL record per-request latency and error status for both stable and canary cohorts	MUST	Risk Engine
-FR-26	Proxy SHALL persist rolling metrics snapshot to /tmp/econest_proxy_metrics.json after every request	MUST	Risk Engine
-FR-27	Proxy SHALL expose /__econest/health and /__econest/metrics internal endpoints	MUST	Operations
+FR-26	Proxy SHALL persist rolling metrics snapshot to /tmp/bellwether_proxy_metrics.json after every request	MUST	Risk Engine
+FR-27	Proxy SHALL expose /__bellwether/health and /__bellwether/metrics internal endpoints	MUST	Operations
 
 4.4  Risk Evaluation
 ID	Requirement	Priority	Source
@@ -118,9 +130,9 @@ The Native Python Orchestrator defines 10 stages executed in the following seque
 1	Rollback Gate	Fires only if FORCE_ROLLBACK=true. Runs deploy_script.sh 0, then error() to mark FAILED	N/A — this IS the failure path
 2	Install Dependencies	pip3 install platform deps. Validates with python3 -c import check	Abort — cannot continue without deps
 3	Verify DB Structure	Runs verify_db_structure.py. Replace with real schema check in production	Abort with clear error message
-4	Launch Stable	Clones repo to /tmp/econest_stable_app, runs launch_app.sh on port 8001	Abort — cannot split without baseline
+4	Launch Stable	Clones repo to /tmp/bellwether_stable_app, runs launch_app.sh on port 8001	Abort — cannot split without baseline
 5	Launch Proxy	Kills any existing port 9000 process, starts traffic_proxy.py, verifies health endpoint	Abort — proxy is the traffic gate
-6	Launch Canary	Clones repo to /tmp/econest_canary_app, runs launch_app.sh on port 8002	Abort — no canary to route to
+6	Launch Canary	Clones repo to /tmp/bellwether_canary_app, runs launch_app.sh on port 8002	Abort — no canary to route to
 7	Canary 10%	Writes '10' to weight file via deploy_script.sh, sends 10 warm-up requests via proxy	post{failure} fires rollback
 8	Evaluate Risk	Runs evaluate_risk.py. Reads real proxy metrics. Exits 1 on ABORT	post{failure} fires rollback
 9	Promote 50%	Writes '50' to weight file, sends 20 test requests through proxy	post{failure} fires rollback
@@ -208,7 +220,7 @@ P3 — Future Sprint
 •	Slack/email alert when ABORT decision is written to MLflow
 •	Multi-repo A/B test mode: run two different repos as stable vs canary
 •	Docker isolation: wrap each launched process in a container
-•	Browser-based log streaming: tail /tmp/econest_canary.log in real time via dashboard
+•	Browser-based log streaming: tail /tmp/bellwether_canary.log in real time via dashboard
 
 11. Local Development Setup
 11.1  Prerequisites
@@ -222,18 +234,18 @@ P3 — Future Sprint
 11.2  Cloud Setup
 •	Type: Pipeline
 •	Pipeline definition: Pipeline script from SCM
-•	SCM: Git — https://github.com/srikarreddyram/econest-canary-platform.git
+•	SCM: Git — https://github.com/srikarreddyram/bellwether-canary-platform.git
 •	Branch: */main — Script Path: Orchestratorfile
 •	Build with Parameters: auto-detected from parameters{} block in Orchestratorfile
 
 11.3  Start Sequence
 # 1. Enter repo and activate venv
-cd ~/econest-canary-platform
+cd ~/bellwether-canary-platform
 source venv/bin/activate
 
 # 2. Start API (new terminal tab)
 python3 Api.py
-# Expect: Econest Canary API running on http://localhost:5001
+# Expect: Bellwether Canary API running on http://localhost:5001
 
 # 3. Open dashboard
 open dashboard.html
@@ -242,7 +254,7 @@ open dashboard.html
 # 4. Optional — trigger build from terminal
 curl -X POST http://localhost:8080/job/Adaptive-Canary-Core/buildWithParameters \
      -u tejsr:<API_TOKEN> \
-     --data "REPO_URL=https://github.com/srikarreddyram/econest-canary-platform.git"
+     --data "REPO_URL=https://github.com/srikarreddyram/bellwether-canary-platform.git"
 
 11.4  Health Checks
 # API
@@ -250,7 +262,7 @@ curl http://localhost:5001/api/health
 # Expected: {"status": "ok"}
 
 # Proxy (after Launch Proxy stage has run)
-curl http://localhost:9000/__econest/health
+curl http://localhost:9000/__bellwether/health
 # Expected: {"status": "ok", "canary_weight": 10}
 
 # Stable app
@@ -261,12 +273,12 @@ curl http://localhost:8002/
 
 # Traffic split check
 curl -I http://localhost:9000/
-# Look for X-Econest-Target: stable  OR  X-Econest-Target: canary
+# Look for X-Bellwether-Target: stable  OR  X-Bellwether-Target: canary
 
 12. Glossary
 Term	Definition
 Canary Deployment	A release strategy where a new version receives a small percentage of live traffic before full promotion, allowing risk assessment with real users before committing.
-Traffic Weight	The percentage of incoming requests routed to the canary instance. Stored as an integer (0-100) in /tmp/econest_traffic_weight and read by the proxy on every request.
+Traffic Weight	The percentage of incoming requests routed to the canary instance. Stored as an integer (0-100) in /tmp/bellwether_traffic_weight and read by the proxy on every request.
 Stable Instance	The currently deployed, known-good version of the application. Runs on port 8001. Receives (100 - weight)% of traffic.
 Canary Instance	The new version under test. Runs on port 8002. Receives weight% of traffic. Killed on rollback or after successful 100% promotion.
 Traffic Proxy	A lightweight Python HTTP server (traffic_proxy.py) on port 9000 that probabilistically forwards requests to stable or canary based on the weight file.
@@ -287,7 +299,7 @@ PID File	A file containing the process ID of a running background process. Used 
 
 14. V3 Improvements
 - **Docker Isolation:** Apps are built and run in dynamic Docker containers for perfect isolation.
-- **Session Stickiness:** The proxy uses an `Econest-Cohort` cookie to ensure consistent routing.
+- **Session Stickiness:** The proxy uses an `Bellwether-Cohort` cookie to ensure consistent routing.
 - **Expanded Language Support:** Added Maven build steps for Java and `npm run build` for Node.js.
 - **WebSockets:** Real-time Dashboard updates powered by Flask-SocketIO instead of HTTP polling.
 - **Smart Alerting:** Webhook POST payloads fired upon `ABORT` decisions.
