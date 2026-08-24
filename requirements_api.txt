@@ -1,7 +1,0 @@
-flask
-flask-cors
-flask-socketio
-requests
-mlflow
-pandas
-scikit-learn
