@@ -1,16 +1,42 @@
-# React + Vite
+# Bellwether dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The control-plane UI: a React + Vite single-page app that talks to
+`bellwether api` over REST and a WebSocket.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev      # http://localhost:5173
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The API must be running (`bellwether api`) and must list this origin in
+`BELLWETHER_CORS_ORIGINS`. The default allowlist already includes
+`http://localhost:5173`; if you serve the dashboard from anywhere else, add that
+origin or the browser will block every request.
 
-## React Compiler
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production bundle into `dist/` |
+| `npm run preview` | Serve the built bundle |
+| `npm run lint` | ESLint |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Configuration
 
-## Expanding the ESLint configuration
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_API_URL` | `http://127.0.0.1:5001` | Control-plane address |
+| `VITE_API_TOKEN` | unset | Sent as `Authorization: Bearer` when the API requires a token |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Notes for contributors
+
+- **Stages come from the backend.** `/api/config` serves the stage catalogue and
+  the UI renders whatever it declares. Do not hardcode a parallel stage list —
+  that drift is exactly what the previous dashboard suffered from.
+- **Colours are tokens, never literals.** Every colour resolves through a CSS
+  custom property in `src/index.css`, so light and dark are defined in one
+  place. The two cohort colours are a validated categorical pair; the status
+  palette is separate and never reused for a series.
+- **State is never colour alone.** Every status pill carries a glyph and a text
+  label.
+- **The latency chart is plain SVG.** Two series, one reference line and a
+  crosshair do not justify a charting dependency.
